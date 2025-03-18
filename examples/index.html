@@ -44,12 +44,54 @@
     button:hover {
       background-color: #003380;
     }
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
     .heatmap-container {
       position: fixed;
       top: 0;
       right: 0;
       width: 20px;
       height: 100%;
+      background-color: rgba(200, 200, 200, 0.1);
+      z-index: 9000;
+    }
+    #status {
+      position: fixed;
+      top: 10px;
+      right: 30px;
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 5px 10px;
+      border-radius: 3px;
+      font-size: 14px;
+      z-index: 9999;
+    }
+    .stats {
+      margin-top: 40px;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border-radius: 5px;
+      display: none;
+    }
+    .stats table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .stats th, .stats td {
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    .stats th {
+      background-color: #f2f2f2;
+    }
+    .flash {
+      animation: flash-animation 1.5s ease-out;
+    }
+    @keyframes flash-animation {
+      0% { background-color: rgba(79, 151, 255, 0.2); }
+      100% { background-color: transparent; }
     }
   </style>
 </head>
@@ -79,18 +121,35 @@
   </div>
   
   <div class="heatmap-container" id="heatmap"></div>
+  <div id="status">Status: Ready</div>
+  
+  <div class="stats" id="statsPanel">
+    <h2>Engagement Statistics</h2>
+    <table id="statsTable">
+      <thead>
+        <tr>
+          <th>Paragraph</th>
+          <th>Time (ms)</th>
+          <th>Engagement</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
   
   <div class="controls">
     <button id="startButton">Start Tracking</button>
     <button id="stopButton" disabled>Stop Tracking</button>
     <button id="showButton" disabled>Show Highlights</button>
+    <button id="showStatsButton" disabled>Show Stats</button>
     <button id="exportButton" disabled>Export Data</button>
   </div>
 
   <!-- Include the highlight tracker library -->
-  <script src="highlight-tracker.js"></script>
-  
-  <script>
+  <script type="module">
+    // Import the HighlightTracker class
+    import HighlightTracker from './highlight-tracker.js';
+    
     document.addEventListener('DOMContentLoaded', function() {
       // Initialize the tracker
       const tracker = new HighlightTracker({
@@ -104,52 +163,19 @@
         }
       });
       
+      const statusEl = document.getElementById('status');
+      const updateStatus = (msg) => {
+        statusEl.textContent = `Status: ${msg}`;
+      };
+      
       // Initialize with content container
-      tracker.init('#content');
-      
-      // UI Controls
-      const startButton = document.getElementById('startButton');
-      const stopButton = document.getElementById('stopButton');
-      const showButton = document.getElementById('showButton');
-      const exportButton = document.getElementById('exportButton');
-      
-      startButton.addEventListener('click', function() {
-        tracker.startTracking();
-        startButton.disabled = true;
-        stopButton.disabled = false;
-        console.log('Tracking started');
-      });
-      
-      stopButton.addEventListener('click', function() {
-        tracker.stopTracking();
-        stopButton.disabled = true;
-        showButton.disabled = false;
-        exportButton.disabled = false;
-        console.log('Tracking stopped');
-      });
-      
-      showButton.addEventListener('click', function() {
-        tracker.createHeatmap();
-        console.log('Heatmap created');
-      });
-      
-      exportButton.addEventListener('click', function() {
-        const data = tracker.exportData();
-        console.log('Engagement data:', data);
-        
-        // Create a formatted display of the data
-        const dataStr = JSON.stringify(data, null, 2);
-        const blob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'engagement-data.json';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      });
+      try {
+        tracker.init('#content');
+        updateStatus('Ready');
+      } catch (error) {
+        console.error('Error initializing tracker:', error);
+        updateStatus('Error: Tracker initialization failed');
+      }
     });
   </script>
 </body>
-</html>
