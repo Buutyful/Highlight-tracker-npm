@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paragraph Highlight Tracker Demo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    p {
+      margin-bottom: 1.5em;
+      padding: 10px;
+      border-radius: 5px;
+      transition: background-color 0.3s;
+    }
+    p:hover {
+      background-color: #f5f5f5;
+    }
+    .controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      z-index: 1000;
+    }
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      background-color: #0047AB;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #003380;
+    }
+    .heatmap-container {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 20px;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <h1>Paragraph Highlight Tracker Demo</h1>
+  
+  <div id="content">
+    <p>This is the first paragraph. The highlight tracker will measure how long readers spend viewing this text and create a visualization showing the most engaged-with sections.</p>
+    
+    <p>Each paragraph is tracked independently, allowing content creators to see which sections capture the most attention from readers. This information can be invaluable for optimizing content.</p>
+    
+    <p>The tracker uses the Intersection Observer API to efficiently detect when paragraphs enter and exit the viewport. This is much more performance-friendly than constantly checking scroll positions.</p>
+    
+    <p>When a reader spends time on a particular paragraph, the engagement data accumulates. The longer they spend, the higher the "highlight" value becomes for that section.</p>
+    
+    <p>On the right side of the screen, you can see a scrollbar-like visualization that shows the engagement "heat map" for all paragraphs. Darker blue colors indicate higher engagement.</p>
+    
+    <p>Content creators can use this data to identify which parts of their articles are most engaging and which parts might need improvement. It's similar to YouTube's engagement visualization but for text content.</p>
+    
+    <p>Clicking on the heatmap sections will automatically scroll the page to the corresponding paragraph, making it easy to navigate to the most interesting parts of the content.</p>
+    
+    <p>The system can be easily integrated into any website or content management system. It's lightweight and doesn't affect page performance.</p>
+    
+    <p>All engagement data can be exported for further analysis, allowing content teams to make data-driven decisions about their writing style and content structure.</p>
+    
+    <p>This is the final paragraph in our demo. Once you've spent some time reading through the content, try clicking the "Show Highlights" button to see which paragraphs captured your attention the most.</p>
+  </div>
+  
+  <div class="heatmap-container" id="heatmap"></div>
+  
+  <div class="controls">
+    <button id="startButton">Start Tracking</button>
+    <button id="stopButton" disabled>Stop Tracking</button>
+    <button id="showButton" disabled>Show Highlights</button>
+    <button id="exportButton" disabled>Export Data</button>
+  </div>
+
+  <!-- Include the highlight tracker library -->
+  <script src="highlight-tracker.js"></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize the tracker
+      const tracker = new HighlightTracker({
+        minTimeThreshold: 500, // 0.5 seconds
+        samplingRate: 100, // Check every 100ms
+        heatmapContainer: '#heatmap',
+        colors: {
+          low: '#C6E2FF', // light blue
+          medium: '#4F97FF', // medium blue
+          high: '#0047AB' // dark blue
+        }
+      });
+      
+      // Initialize with content container
+      tracker.init('#content');
+      
+      // UI Controls
+      const startButton = document.getElementById('startButton');
+      const stopButton = document.getElementById('stopButton');
+      const showButton = document.getElementById('showButton');
+      const exportButton = document.getElementById('exportButton');
+      
+      startButton.addEventListener('click', function() {
+        tracker.startTracking();
+        startButton.disabled = true;
+        stopButton.disabled = false;
+        console.log('Tracking started');
+      });
+      
+      stopButton.addEventListener('click', function() {
+        tracker.stopTracking();
+        stopButton.disabled = true;
+        showButton.disabled = false;
+        exportButton.disabled = false;
+        console.log('Tracking stopped');
+      });
+      
+      showButton.addEventListener('click', function() {
+        tracker.createHeatmap();
+        console.log('Heatmap created');
+      });
+      
+      exportButton.addEventListener('click', function() {
+        const data = tracker.exportData();
+        console.log('Engagement data:', data);
+        
+        // Create a formatted display of the data
+        const dataStr = JSON.stringify(data, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'engagement-data.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      });
+    });
+  </script>
+</body>
+</html>

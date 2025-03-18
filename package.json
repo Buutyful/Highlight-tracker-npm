@@ -1,0 +1,36 @@
+{
+    "name": "paragraph-highlight-tracker",
+    "version": "1.0.0",
+    "description": "Track user engagement with paragraph elements and visualize 'highlight moments' similar to YouTube",
+    "main": "highlight-tracker.js",
+   "scripts": {
+  "build": "webpack --mode production",
+  "prepublishOnly": "npm run build"
+},
+    "keywords": [
+        "engagement",
+        "analytics",
+        "highlight",
+        "heatmap",
+        "scroll",
+        "tracking"
+    ],
+    "author": "Buutyful",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/yourusername/paragraph-highlight-tracker"
+    },
+    "bugs": {
+        "url": "https://github.com/yourusername/paragraph-highlight-tracker/issues"
+    },
+    "homepage": "https://github.com/yourusername/paragraph-highlight-tracker#readme",
+    "devDependencies": {
+        "@babel/core": "^7.26.10",
+        "@babel/preset-env": "^7.26.9",
+        "babel-loader": "^10.0.0",
+        "terser-webpack-plugin": "^5.3.14",
+        "webpack": "^5.98.0",
+        "webpack-cli": "^6.0.1"
+    }
+}
