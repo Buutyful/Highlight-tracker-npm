@@ -309,6 +309,20 @@ class HighlightTracker extends EventEmitter {
       this.resizeObserver = new ResizeObserver(this.handleResize);
       this.resizeObserver.observe(document.documentElement);
 
+      // Add Mutation Observer for DOM changes
+      this.mutationObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'childList') {
+            this.handleDOMChanges(mutation);
+          }
+        });
+      });
+
+      this.mutationObserver.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+
       this.paragraphs.forEach(p => {
         try {
           this.observer.observe(p);
@@ -377,7 +391,6 @@ class HighlightTracker extends EventEmitter {
    * @private
    */
   handleResize = () => {
-    // Debounced heatmap update
     clearTimeout(this.resizeTimeout);
     this.resizeTimeout = setTimeout(() => {
       if (this.heatmapVisible) {
@@ -432,8 +445,10 @@ class HighlightTracker extends EventEmitter {
       return;
     }
     
-    // Batch processing for performance
-    const batchSize = Math.min(5, this.paragraphs.length);
+    // Dynamically adjust batch size based on frame time
+    const targetFrameTime = 16; // ms
+    const measuredFrameTime = performance.now() - this.lastFrameTime;
+    const batchSize = Math.min(Math.floor(5 * (targetFrameTime / measuredFrameTime)), this.paragraphs.length);
     this.processBatch(batchSize);
     
     this.rafId = requestAnimationFrame(this.trackingFrame);
@@ -498,10 +513,22 @@ class HighlightTracker extends EventEmitter {
   }
 
   /**
-   * Update the heatmap data and display
+   * Buffer heatmap updates using requestAnimationFrame
    * @private
    */
   updateHeatmap() {
+    if (this.heatmapUpdateRequest) return;
+    this.heatmapUpdateRequest = requestAnimationFrame(() => {
+      this._updateHeatmap();
+      this.heatmapUpdateRequest = null;
+    });
+  }
+
+  /**
+   * Internal method to update the heatmap
+   * @private
+   */
+  _updateHeatmap() {
     if (!this.heatmapContainer) return;
     
     // Clear existing segments
@@ -565,56 +592,55 @@ class HighlightTracker extends EventEmitter {
         cursor: pointer;
         transition: opacity 0.2s;
       `;
-      
-      // Add click handler to scroll to paragraph
-      segment.addEventListener('click', () => {
-        paragraph.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        // Flash highlight effect
-        const originalBg = paragraph.style.backgroundColor;
-        paragraph.style.backgroundColor = 'rgba(79, 151, 255, 0.2)';
-        setTimeout(() => {
-          paragraph.style.backgroundColor = originalBg;
-        }, 1500);
-      });
-      
-      // Add tooltip with engagement data
-      segment.title = `${Math.round(data.timeSpent)}ms spent on this paragraph`;
-      
-      fragment.appendChild(segment);
+    // Add click handler to scroll to paragraph
+    segment.addEventListener('click', () => {
+      paragraph.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Flash highlight effect
+      const originalBg = paragraph.style.backgroundColor;
+      paragraph.style.backgroundColor = 'rgba(79, 151, 255, 0.2)';
+      setTimeout(() => {
+        paragraph.style.backgroundColor = originalBg;
+      }, 1500);
     });
     
-    // Add current viewport indicator
-    const viewportIndicator = document.createElement('div');
-    viewportIndicator.className = 'viewport-indicator';
-    viewportIndicator.style.cssText = `
-      position: absolute;
-      top: ${window.scrollY / docHeight * 100}%;
-      left: -5px;
-      width: 5px;
-      height: ${window.innerHeight / docHeight * 100}%;
-      background-color: rgba(255, 255, 255, 0.7);
-      border: 1px solid #333;
-      pointer-events: none;
-    `;
-    fragment.appendChild(viewportIndicator);
+    // Add tooltip with engagement data
+    segment.title = `${Math.round(data.timeSpent)}ms spent on this paragraph`;
     
-    // Efficient DOM update
-    this.heatmapContainer.appendChild(fragment);
-    
-    // Update viewport indicator on scroll
-    const updateViewportIndicator = () => {
-      const indicator = this.heatmapContainer.querySelector('.viewport-indicator');
-      if (indicator) {
-        indicator.style.top = `${window.scrollY / docHeight * 100}%`;
-      }
-    };
-    
-    // Add scroll listener if not already added
-    if (!this._scrollListenerAdded) {
-      window.addEventListener('scroll', updateViewportIndicator, { passive: true });
-      this._scrollListenerAdded = true;
+    fragment.appendChild(segment);
+  });
+  
+  // Add current viewport indicator
+  const viewportIndicator = document.createElement('div');
+  viewportIndicator.className = 'viewport-indicator';
+  viewportIndicator.style.cssText = `
+    position: absolute;
+    top: ${window.scrollY / docHeight * 100}%;
+    left: -5px;
+    width: 5px;
+    height: ${window.innerHeight / docHeight * 100}%;
+    background-color: rgba(255, 255, 255, 0.7);
+    border: 1px solid #333;
+    pointer-events: none;
+  `;
+  fragment.appendChild(viewportIndicator);
+  
+  // Efficient DOM update
+  this.heatmapContainer.appendChild(fragment);
+  
+  // Update viewport indicator on scroll
+  const updateViewportIndicator = () => {
+    const indicator = this.heatmapContainer.querySelector('.viewport-indicator');
+    if (indicator) {
+      indicator.style.top = `${window.scrollY / docHeight * 100}%`;
     }
+  };
+  
+  // Add scroll listener if not already added
+  if (!this._scrollListenerAdded) {
+    window.addEventListener('scroll', updateViewportIndicator, { passive: true });
+    this._scrollListenerAdded = true;
   }
+}
 
   /**
    * Hide the heatmap
@@ -710,6 +736,12 @@ class HighlightTracker extends EventEmitter {
         this.resizeObserver.disconnect();
         this.resizeObserver = null;
       }
+
+      // Add cleanup for mutation observer
+      if (this.mutationObserver) {
+        this.mutationObserver.disconnect();
+        this.mutationObserver = null;
+      }
       
       // Remove event listeners
       document.removeEventListener('visibilitychange', this.handleVisibilityChange);
@@ -734,9 +766,57 @@ class HighlightTracker extends EventEmitter {
       this.paragraphs = [];
       this.engagementData = new WeakMap();
       
+      // Cancel any pending heatmap updates
+      if (this.heatmapUpdateRequest) {
+        cancelAnimationFrame(this.heatmapUpdateRequest);
+        this.heatmapUpdateRequest = null;
+      }
+      
       this.emit('destroyed');
     } catch (error) {
       this.emit('error', { message: 'Error during cleanup', error });
+    }
+  }
+
+  /**
+   * Handle DOM mutations that might affect tracked paragraphs
+   * @param {MutationRecord} mutation - The mutation record
+   * @private
+   */
+  handleDOMChanges(mutation) {
+    // Check added nodes for new paragraphs
+    mutation.addedNodes.forEach(node => {
+      if (node.nodeName === 'P') {
+        // Add new paragraph to tracking
+        const id = `p-${Date.now()}-${this.paragraphs.length}`;
+        node.dataset.highlightId = id;
+        this.paragraphs.push(node);
+        this.engagementData.set(node, {
+          visibleRatio: 0,
+          timeSpent: 0,
+          weightedTime: 0,
+          lastUpdate: this.isTracking ? performance.now() : null,
+          inView: false
+        });
+        this.observer.observe(node);
+      }
+    });
+
+    // Check removed nodes for tracked paragraphs
+    mutation.removedNodes.forEach(node => {
+      if (node.nodeName === 'P' && node.dataset.highlightId) {
+        // Remove paragraph from tracking
+        const index = this.paragraphs.findIndex(p => p.dataset.highlightId === node.dataset.highlightId);
+        if (index !== -1) {
+          this.paragraphs.splice(index, 1);
+          this.engagementData.delete(node);
+        }
+      }
+    });
+
+    // Update heatmap if visible using buffered update
+    if (this.heatmapVisible) {
+      this.updateHeatmap();
     }
   }
 }
