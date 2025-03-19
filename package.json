@@ -19,12 +19,12 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/yourusername/paragraph-highlight-tracker"
+        "url": "https://github.com/Buutyful/Highlight-tracker-npm"
     },
     "bugs": {
-        "url": "https://github.com/yourusername/paragraph-highlight-tracker/issues"
+        "url": "https://github.com/Buutyful/Highlight-tracker-npm/issues"
     },
-    "homepage": "https://github.com/yourusername/paragraph-highlight-tracker#readme",
+    "homepage": "https://github.com/Buutyful/Highlight-tracker-npm/blob/master/README.md",
     "devDependencies": {
         "@babel/core": "^7.26.10",
         "@babel/preset-env": "^7.26.9",
